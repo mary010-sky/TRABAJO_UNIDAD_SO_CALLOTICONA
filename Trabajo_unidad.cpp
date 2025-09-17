@@ -209,7 +209,8 @@ public:
                 return true;
             }
         }
-        cout << "No se pudo asignar memoria para PID " << pid << " (Tamano: " << tamano << ")" << endl;
+        cout << "No se pudo asignar memoria para PID " 
+		<< pid << " (Tamano: " << tamano << ")" << endl;
         return false;
     }
     
@@ -245,7 +246,8 @@ public:
             return true;
         }
         
-        cout << "No se pudo asignar memoria para PID " << pid << " (Tamano: " << tamano << ")" << endl;
+        cout << "No se pudo asignar memoria para PID " 
+		<< pid << " (Tamano: " << tamano << ")" << endl;
         return false;
     }
     
