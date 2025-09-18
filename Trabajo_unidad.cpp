@@ -1,4 +1,4 @@
-#include <iostream>
+#include <iostream> 
 #include <vector>
 #include <queue>
 #include <algorithm>
@@ -9,30 +9,27 @@ using namespace std;
 
 // Estructura para representar un proceso (PCB)
 struct Proceso {
-    int pid;
-    int llegada;
-    int servicio;
-    int inicio;
-    int fin;
-    int tiempoRestante;  // Para Round Robin
-    bool iniciado;
+    int pid;   //Indetificador unico del Proceso 
+    int llegada; // TImepo de llegado del sistema 
+    int servicio; //CPU burts total Requerido 
+    int inicio; //Tiempo de la primera Ejecucion y terminacion 
+    int fin; 
+    int tiempoRestante;//Tiempo restante RR
+    bool iniciado;  // Control del primer despacho
     
-    // Constructor
     Proceso(int p, int ll, int s) : pid(p), llegada(ll), servicio(s), 
                                     inicio(-1), fin(-1), tiempoRestante(s), iniciado(false) {}
     
-    // Métodos para calcular métricas
     int respuesta() const { return inicio - llegada; }
     int espera() const { return fin - llegada - servicio; }
     int retorno() const { return fin - llegada; }
 };
 
-// Estructura para bloques de memoria
 struct BloqueMemoria {
-    int id;
-    int tamano;
-    bool ocupado;
-    int pidAsignado;
+    int id; // Indetificador de bloques
+    int tamano;// Tamaño de bytes 
+    bool ocupado; // Estado del bloque 
+    int pidAsignado; // Pid  del proceso asignado 
     
     BloqueMemoria(int i, int t) : id(i), tamano(t), ocupado(false), pidAsignado(-1) {}
 };
@@ -47,54 +44,118 @@ private:
 public:
     SimuladorSO() {}
     
-    // Cargar procesos
+   //Ingresar procesos manualmente
+    void ingresarProcesos() {
+        procesos.clear();
+        int numProcesos;
+        
+        cout << "\n=== INGRESO DE PROCESOS ===" << endl;
+        cout << "Numero de procesos a ingresar: ";
+        cin >> numProcesos;
+        
+        for (int i = 0; i < numProcesos; i++) {
+            int pid, llegada, servicio;
+            cout << "\n--- Proceso " << (i+1) << " ---" << endl;
+            cout << "PID: ";
+            cin >> pid;
+            cout << "Tiempo de llegada: ";
+            cin >> llegada;
+            cout << "Tiempo de servicio (CPU burst): ";
+            cin >> servicio;
+            
+            procesos.push_back(Proceso(pid, llegada, servicio));
+        }
+        
+        cout << "\nProcesos ingresados exitosamente!" << endl;
+        mostrarProcesosIngresados();
+    }
+    
+   // Mostrar procesos actuales
+    void mostrarProcesosIngresados() {
+        cout << "\n=== PROCESOS ACTUALES ===" << endl;
+        cout << "PID | Llegada | Servicio" << endl;
+        cout << "--- | ------- | --------" << endl;
+        for (const auto& p : procesos) {
+            cout << setw(3) << p.pid << " | "
+                 << setw(7) << p.llegada << " | "
+                 << setw(8) << p.servicio << endl;
+        }
+    }
+    
+   // Cargar datos de ejemplo rápido
+    void cargarDatosEjemplo() {
+        procesos.clear();
+        procesos = {
+            Proceso(1, 0, 12),
+            Proceso(2, 1, 5),
+            Proceso(3, 2, 8)
+        };
+        cout << "Datos de ejemplo cargados!" << endl;
+        mostrarProcesosIngresados();
+    }
+    
     void cargarProcesos(const vector<Proceso>& procs) {
         procesos = procs;
     }
     
-    // Inicializar memoria
     void inicializarMemoria(int tamano, const string& estrategia) {
         tamanoMemoria = tamano;
         algoritmoMemoria = estrategia;
-        // Crear un bloque inicial con toda la memoria disponible
         memoria.clear();
         memoria.push_back(BloqueMemoria(0, tamano));
     }
     
-    // Algoritmo FCFS (First Come First Served)
     void ejecutarFCFS() {
+        if (procesos.empty()) {
+            cout << "No hay procesos cargados. Ingrese procesos primero." << endl;
+            return;
+        }
+        
         cout << "\n=== ALGORITMO FCFS ===" << endl;
         
-        // Ordenar por tiempo de llegada
-        sort(procesos.begin(), procesos.end(), 
+        // Crear copia para no modificar los originales
+        vector<Proceso> procesosTemp = procesos;
+        
+        // 1. O
+        sort(procesosTemp.begin(), procesosTemp.end(), 
              [](const Proceso& a, const Proceso& b) { return a.llegada < b.llegada; });
         
         int tiempoActual = 0;
         
-        for (auto& proceso : procesos) {
-            // Si el tiempo actual es menor que la llegada, avanzar al tiempo de llegada
+        cout << "\nSimulacion paso a paso:" << endl;
+        for (auto& proceso : procesosTemp) {
             if (tiempoActual < proceso.llegada) {
+                cout << "Tiempo " << tiempoActual << "-" << proceso.llegada << ": CPU inactiva" << endl;
                 tiempoActual = proceso.llegada;
             }
             
             proceso.inicio = tiempoActual;
+            cout << "Tiempo " << tiempoActual << ": Inicia proceso PID " << proceso.pid << endl;
             tiempoActual += proceso.servicio;
             proceso.fin = tiempoActual;
+            cout << "Tiempo " << tiempoActual << ": Termina proceso PID " << proceso.pid << endl;
         }
         
+        procesos = procesosTemp;
         mostrarResultados();
     }
     
-    // Algoritmo SPN (Shortest Process Next)
     void ejecutarSPN() {
+        if (procesos.empty()) {
+            cout << "No hay procesos cargados. Ingrese procesos primero." << endl;
+            return;
+        }
+        
         cout << "\n=== ALGORITMO SPN ===" << endl;
         
         vector<Proceso> cola;
         vector<Proceso> ejecutados;
         int tiempoActual = 0;
         
+        cout << "\nSimulacion paso a paso:" << endl;
+        
         while (ejecutados.size() < procesos.size()) {
-            // Agregar procesos que han llegado a la cola
+            // Agregar procesos que han llegado
             for (auto& proceso : procesos) {
                 if (proceso.llegada <= tiempoActual && 
                     find_if(cola.begin(), cola.end(), 
@@ -102,6 +163,8 @@ public:
                     find_if(ejecutados.begin(), ejecutados.end(),
                            [&proceso](const Proceso& p) { return p.pid == proceso.pid; }) == ejecutados.end()) {
                     cola.push_back(proceso);
+                    cout << "Tiempo " << tiempoActual << ": Llega proceso PID " << proceso.pid 
+                         << " (servicio=" << proceso.servicio << ")" << endl;
                 }
             }
             
@@ -110,17 +173,20 @@ public:
                 continue;
             }
             
-            // Ordenar por servicio (y por llegada en caso de empate)
+            // Ordenar por servicio
             sort(cola.begin(), cola.end(), [](const Proceso& a, const Proceso& b) {
                 if (a.servicio == b.servicio) return a.llegada < b.llegada;
                 return a.servicio < b.servicio;
             });
             
-            // Ejecutar el proceso más corto
+            // Ejecutar el más corto
             Proceso& procesoActual = cola.front();
             procesoActual.inicio = tiempoActual;
+            cout << "Tiempo " << tiempoActual << ": Ejecuta proceso PID " << procesoActual.pid 
+                 << " (el mas corto con servicio=" << procesoActual.servicio << ")" << endl;
             tiempoActual += procesoActual.servicio;
             procesoActual.fin = tiempoActual;
+            cout << "Tiempo " << tiempoActual << ": Termina proceso PID " << procesoActual.pid << endl;
             
             ejecutados.push_back(procesoActual);
             cola.erase(cola.begin());
@@ -130,25 +196,32 @@ public:
         mostrarResultados();
     }
     
-    // Algoritmo Round Robin
     void ejecutarRoundRobin(int quantum) {
+        if (procesos.empty()) {
+            cout << "No hay procesos cargados. Ingrese procesos primero." << endl;
+            return;
+        }
+        
         cout << "\n=== ALGORITMO ROUND ROBIN (Quantum=" << quantum << ") ===" << endl;
         
-        // Crear copias de los procesos para no modificar los originales
         vector<Proceso> procesosRR = procesos;
-        queue<int> colaListos; // Índices de procesos
+        queue<int> colaListos;
         vector<bool> enCola(procesosRR.size(), false);
         int tiempoActual = 0;
         int procesosTerminados = 0;
         
+        cout << "\nSimulacion paso a paso:" << endl;
+        
         while (procesosTerminados < procesosRR.size()) {
-            // Agregar procesos que han llegado a la cola
+            // Agregar procesos que llegaron
             for (int i = 0; i < procesosRR.size(); i++) {
                 if (procesosRR[i].llegada <= tiempoActual && 
                     procesosRR[i].tiempoRestante > 0 && 
                     !enCola[i]) {
                     colaListos.push(i);
                     enCola[i] = true;
+                    cout << "Tiempo " << tiempoActual << ": PID " << procesosRR[i].pid 
+                         << " entra a cola de listos" << endl;
                 }
             }
             
@@ -157,32 +230,36 @@ public:
                 continue;
             }
             
-            // Tomar el primer proceso de la cola
             int indice = colaListos.front();
             colaListos.pop();
             enCola[indice] = false;
             
             Proceso& procesoActual = procesosRR[indice];
             
-            // Marcar inicio si es la primera vez
             if (!procesoActual.iniciado) {
                 procesoActual.inicio = tiempoActual;
                 procesoActual.iniciado = true;
+                cout << "Tiempo " << tiempoActual << ": PID " << procesoActual.pid 
+                     << " inicia por primera vez" << endl;
             }
             
-            // Ejecutar por quantum o hasta terminar
             int tiempoEjecucion = min(quantum, procesoActual.tiempoRestante);
+            cout << "Tiempo " << tiempoActual << "-" << (tiempoActual + tiempoEjecucion) 
+                 << ": Ejecutando PID " << procesoActual.pid 
+                 << " (restante=" << procesoActual.tiempoRestante << ")" << endl;
+            
             tiempoActual += tiempoEjecucion;
             procesoActual.tiempoRestante -= tiempoEjecucion;
             
-            // Si terminó
             if (procesoActual.tiempoRestante == 0) {
                 procesoActual.fin = tiempoActual;
                 procesosTerminados++;
+                cout << "Tiempo " << tiempoActual << ": PID " << procesoActual.pid << " TERMINA" << endl;
             } else {
-                // Volver a agregar a la cola si no terminó
                 colaListos.push(indice);
                 enCola[indice] = true;
+                cout << "Tiempo " << tiempoActual << ": PID " << procesoActual.pid 
+                     << " vuelve a cola (quantum agotado)" << endl;
             }
         }
         
@@ -190,14 +267,12 @@ public:
         mostrarResultados();
     }
     
-    // Gestión de memoria - First Fit
     bool asignarMemoriaFirstFit(int pid, int tamano) {
         for (auto& bloque : memoria) {
             if (!bloque.ocupado && bloque.tamano >= tamano) {
                 cout << "Memoria asignada: PID " << pid << " -> Bloque ID " << bloque.id 
                      << " (Tamano: " << bloque.tamano << ")" << endl;
                 
-                // Si el bloque es más grande, dividirlo
                 if (bloque.tamano > tamano) {
                     memoria.insert(memoria.begin() + (&bloque - &memoria[0]) + 1,
                                    BloqueMemoria(memoria.size(), bloque.tamano - tamano));
@@ -209,12 +284,10 @@ public:
                 return true;
             }
         }
-        cout << "No se pudo asignar memoria para PID " 
-		<< pid << " (Tamano: " << tamano << ")" << endl;
+        cout << "No se pudo asignar memoria para PID " << pid << " (Tamano: " << tamano << ")" << endl;
         return false;
     }
     
-    // Gestión de memoria - Best Fit
     bool asignarMemoriaBestFit(int pid, int tamano) {
         int mejorBloque = -1;
         int menorDesperdicio = tamanoMemoria + 1;
@@ -234,7 +307,6 @@ public:
             cout << "Memoria asignada: PID " << pid << " -> Bloque ID " << bloque.id 
                  << " (Tamano: " << bloque.tamano << ")" << endl;
             
-            // Si el bloque es más grande, dividirlo
             if (bloque.tamano > tamano) {
                 memoria.insert(memoria.begin() + mejorBloque + 1,
                                BloqueMemoria(memoria.size(), bloque.tamano - tamano));
@@ -246,12 +318,10 @@ public:
             return true;
         }
         
-        cout << "No se pudo asignar memoria para PID " 
-		<< pid << " (Tamano: " << tamano << ")" << endl;
+        cout << "No se pudo asignar memoria para PID " << pid << " (Tamano: " << tamano << ")" << endl;
         return false;
     }
     
-    // Mostrar resultados de planificación
     void mostrarResultados() {
         cout << "\nResultados de Planificacion:" << endl;
         cout << "PID | Llegada | Servicio | Inicio | Fin | Respuesta | Espera | Retorno" << endl;
@@ -291,35 +361,37 @@ int main() {
     
     cout << "=== SIMULADOR DE SISTEMA OPERATIVO ===" << endl;
     
-    // Cargar procesos de ejemplo
-    vector<Proceso> procesos = {
-        Proceso(1, 0, 12),
-        Proceso(2, 1, 5),
-        Proceso(3, 2, 8)
-    };
-    
-    simulador.cargarProcesos(procesos);
-    
-    // Menú principal
     int opcion;
     do {
         cout << "\n--- MENU PRINCIPAL ---" << endl;
-        cout << "1. Ejecutar FCFS" << endl;
-        cout << "2. Ejecutar SPN" << endl;
-        cout << "3. Ejecutar Round Robin" << endl;
-        cout << "4. Gestion de Memoria" << endl;
-        cout << "5. Salir" << endl;
+        cout << "0. Ingresar procesos manualmente" << endl;
+        cout << "1. Cargar datos de ejemplo" << endl;
+        cout << "2. Ver procesos actuales" << endl;
+        cout << "3. Ejecutar FCFS" << endl;
+        cout << "4. Ejecutar SPN" << endl;
+        cout << "5. Ejecutar Round Robin" << endl;
+        cout << "6. Gestion de Memoria" << endl;
+        cout << "7. Salir" << endl;
         cout << "Seleccione una opcion: ";
         cin >> opcion;
         
         switch(opcion) {
+            case 0:
+                simulador.ingresarProcesos();
+                break;
             case 1:
-                simulador.ejecutarFCFS();
+                simulador.cargarDatosEjemplo();
                 break;
             case 2:
+                simulador.mostrarProcesosIngresados();
+                break;
+            case 3:
+                simulador.ejecutarFCFS();
+                break;
+            case 4:
                 simulador.ejecutarSPN();
                 break;
-            case 3: {
+            case 5: {
                 int quantum;
                 cout << "Ingrese el quantum (>=2): ";
                 cin >> quantum;
@@ -330,7 +402,7 @@ int main() {
                 }
                 break;
             }
-            case 4: {
+            case 6: {
                 cout << "\n--- GESTION DE MEMORIA ---" << endl;
                 int tamMemoria;
                 string estrategia;
@@ -358,13 +430,13 @@ int main() {
                 }
                 break;
             }
-            case 5:
+            case 7:
                 cout << "Saliendo del simulador..." << endl;
                 break;
             default:
                 cout << "Opcion no valida" << endl;
         }
-    } while (opcion != 5);
+    } while (opcion != 7);
     
     return 0;
 }
